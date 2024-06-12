@@ -1,6 +1,13 @@
-from fastapi import APIRouter, Body, status
+from datetime import datetime
+from uuid import uuid4
+from fastapi import APIRouter, Body, HTTPException, status
+from sqlalchemy.future import select
 
+from workout_api.atleta.models import AtletaModel
 from workout_api.atleta.schemas import AtletaIn, AtletaOut
+from workout_api.categorias.models import CategoriaModel
+from workout_api.categorias.schemas import CategoriasOut
+from workout_api.centro_treinamento.models import CentroTreinamentoModel
 from workout_api.contrib.dependencies import DatabaseDependency
 
 router = APIRouter()
@@ -14,5 +21,57 @@ async def post(
     db_session: DatabaseDependency,
     atleta_in: AtletaIn = Body(...)
 ) -> AtletaOut:
-    pass
+    
+    categoria = (
+        await db_session.execute(
+            select(CategoriaModel).filter_by(nome=atleta_in.categoria.nome)
+        )
+    ).scalars().first()
+
+    if not categoria:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Não foi encontrada categoria com o nome {atleta_in.categoria.nome}'
+        )
+    
+    centro_treinamento = (
+        await db_session.execute(
+            select(CentroTreinamentoModel).filter_by(nome= atleta_in.centro_treinamento.nome)
+        )
+    ).scalars().first()
+
+    if not centro_treinamento:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Não foi encontrado dentro de treinamento com o nome {atleta_in.centro_treinamento.nome}'
+        )
+    
+    atleta_out = AtletaOut(
+        id=uuid4(),
+        created_at=datetime.now(),
+        **atleta_in.model_dump()
+    )
+
+    atleta_model = AtletaModel(**atleta_out.model_dump(exclude=['categoria', 'centro_treinamento']))
+
+    atleta_model.categoria_id = categoria.pk_id
+    atleta_model.centro_treinamento_id = centro_treinamento.pk_id
+
+    db_session.add(atleta_model)
+
+    await db_session.commit()
+
+    return atleta_out
+
+@router.get(
+    '/',
+    summary='Consultar todos os atletas',
+    status_code=status.HTTP_200_OK,
+    response_model=list[AtletaOut]
+)
+async def query(db_session: DatabaseDependency):
+    atletas= (await db_session.execute(select(AtletaModel))).scalars().all()
+
+    return [AtletaOut.model_validate(atleta) for atleta in atletas]
+
 
