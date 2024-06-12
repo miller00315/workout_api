@@ -1,5 +1,6 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, Float, DateTime, ForeignKey
+from pydantic import UUID4
+from sqlalchemy import UUID, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from workout_api.contrib.models import BaseModel
 
@@ -7,6 +8,7 @@ class AtletaModel(BaseModel):
     __tablename__ = 'atletas'
 
     pk_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[UUID4] = mapped_column(UUID, unique=True, nullable=False)
     nome: Mapped[str] = mapped_column(String(50), nullable=False)
     CPF: Mapped[str] = mapped_column(String(11), unique=True, nullable=False)
     idade: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -23,7 +23,8 @@ def upgrade() -> None:
     op.create_table("categorias",
     sa.Column('pk_id', sa.Integer(), nullable=False), 
     sa.Column('nome', sa.String(length=50), nullable=False), 
-    sa.Column('id', sa.UUID(), nullable=False), 
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('pk_id'), 
     sa.UniqueConstraint('nome'),                
     )
@@ -32,7 +33,8 @@ def upgrade() -> None:
     sa.Column('nome', sa.String(length=50), nullable=False), 
     sa.Column('endereco', sa.String(length=60), nullable=False), 
     sa.Column('proprietario', sa.String(length=30), nullable=False), 
-    sa.Column('id', sa.UUID(), nullable=False), 
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('pk_id'), 
     sa.UniqueConstraint('nome'),                
     )
