@@ -3,6 +3,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import UUID4
 from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
 
 from workout_api.atleta.models import AtletaModel
 from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate
@@ -46,20 +47,36 @@ async def post(
             detail=f'Não foi encontrado dentro de treinamento com o nome {atleta_in.centro_treinamento.nome}'
         )
     
-    atleta_out = AtletaOut(
-        id=uuid4(),
-        created_at=datetime.now(),
-        **atleta_in.model_dump()
-    )
+    try:
+        atleta_out = AtletaOut(
+            id=uuid4(),
+            created_at=datetime.now(),
+            **atleta_in.model_dump()
+        )
 
-    atleta_model = AtletaModel(**atleta_out.model_dump(exclude=['categoria', 'centro_treinamento']))
+        atleta_model = AtletaModel(**atleta_out.model_dump(exclude=['categoria', 'centro_treinamento']))
 
-    atleta_model.categoria_id = categoria.pk_id
-    atleta_model.centro_treinamento_id = centro_treinamento.pk_id
+        atleta_model.categoria_id = categoria.pk_id
+        atleta_model.centro_treinamento_id = centro_treinamento.pk_id
 
-    db_session.add(atleta_model)
+    
+        db_session.add(atleta_model)
 
-    await db_session.commit()
+        await db_session.commit()
+
+    except IntegrityError as e:
+        await db_session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            detail=f'Já existe um usuário com o o CPF: {atleta_in.CPF}'
+        )
+        
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail='Ocorreu um erro ao inserir os dados no banco'
+        )
 
     return atleta_out
 
